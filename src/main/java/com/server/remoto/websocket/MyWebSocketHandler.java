@@ -52,6 +52,21 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
         try {
             BufferedImage capture = robot.createScreenCapture(screenRect);
+
+            // Obtener la posición actual del mouse
+            Point mouse = MouseInfo.getPointerInfo().getLocation();
+
+            // Dibujar el cursor sobre la imagen capturada
+            Graphics2D g2d = capture.createGraphics();
+            g2d.setColor(Color.RED); // color visible
+            g2d.setStroke(new BasicStroke(2));
+
+            // Dibujar una cruz simple como cursor
+            int size = 10;
+            g2d.drawLine(mouse.x - size, mouse.y, mouse.x + size, mouse.y);
+            g2d.drawLine(mouse.x, mouse.y - size, mouse.x, mouse.y + size);
+            g2d.dispose();
+
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             ImageIO.write(capture, "jpg", out);
             byte[] payload = out.toByteArray();
