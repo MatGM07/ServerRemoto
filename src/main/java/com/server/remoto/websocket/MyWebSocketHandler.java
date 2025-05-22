@@ -36,7 +36,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             this.windowTracker = new WindowTracker(this);
 
             // Programar las tareas periódicas
-            scheduler.scheduleAtFixedRate(this::broadcastScreen, 0, 67, TimeUnit.MILLISECONDS);
+            scheduler.scheduleAtFixedRate(this::broadcastScreen, 0, 33, TimeUnit.MILLISECONDS);
             scheduler.scheduleAtFixedRate(windowTracker::checkChanges, 0, 1, TimeUnit.SECONDS);
 
             initialized = true;
