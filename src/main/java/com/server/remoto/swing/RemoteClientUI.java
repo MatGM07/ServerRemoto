@@ -1,54 +1,57 @@
 package com.server.remoto.swing;
 
+import org.springframework.stereotype.Component;
+
 import javax.swing.*;
 import java.awt.*;
 
+@Component
 public class RemoteClientUI {
-    private final JFrame frame;
-    private final JPanel mainPanel;
-    private final CardLayout cardLayout;
+
+    private JFrame frame;
+    private JPanel mainPanel;
+    private CardLayout cardLayout;
 
     public RemoteClientUI() {
-        // Configura el look and feel
+        // Constructor vacío, no crea la UI todavía
+    }
+
+    public void initUI() {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ignored) {}
 
-        // Crea el frame principal
         frame = new JFrame("Control Remoto");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // CardLayout para alternar vistas
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Panel de "Esperando conexión"
         JPanel waitingPanel = new JPanel(new BorderLayout());
         JLabel label = new JLabel("Esperando conexión...", SwingConstants.CENTER);
         label.setFont(new Font("Arial", Font.PLAIN, 18));
         waitingPanel.add(label, BorderLayout.CENTER);
         mainPanel.add(waitingPanel, "waiting");
 
-        // Panel de "Conexión exitosa"
         JPanel connectedPanel = new JPanel(new BorderLayout());
         JLabel connectedLabel = new JLabel("¡Conexión exitosa!", SwingConstants.CENTER);
         connectedLabel.setFont(new Font("Arial", Font.BOLD, 18));
         connectedPanel.add(connectedLabel, BorderLayout.CENTER);
         mainPanel.add(connectedPanel, "connected");
 
-        // Mostrar panel inicial
         cardLayout.show(mainPanel, "waiting");
 
-        // Frame final
         frame.getContentPane().add(mainPanel);
         frame.setSize(400, 200);
         frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
     }
 
-    // Método público para cambiar a "conectado"
+    public void showWindow() {
+        // Mostrar ventana siempre en el hilo EDT
+        SwingUtilities.invokeLater(() -> frame.setVisible(true));
+    }
+
     public void showConnectedPanel() {
         cardLayout.show(mainPanel, "connected");
     }
 }
-

@@ -1,6 +1,9 @@
 package com.server.remoto.websocket;
 
 import com.server.remoto.WindowTracker;
+import com.server.remoto.swing.RemoteClientUI;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -8,6 +11,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -17,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+@Component
 public class MyWebSocketHandler extends TextWebSocketHandler {
     private Robot robot;
     private Rectangle screenRect;
@@ -24,6 +29,13 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
     private boolean initialized = false;
     private WindowTracker windowTracker;
+    @Autowired
+    private final RemoteClientUI  remoteClientUI;
+
+    @Autowired
+    public MyWebSocketHandler(RemoteClientUI remoteClientUI) {
+         this.remoteClientUI = remoteClientUI;
+    }
 
     private synchronized void initializeRobotIfNeeded() {
         if (initialized) return;
@@ -50,6 +62,10 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         System.out.println("Nueva conexión establecida: " + session.getId());
         initializeRobotIfNeeded();
         sessions.add(session);
+
+        // Cambiar el panel en el hilo de la interfaz gráfica
+        SwingUtilities.invokeLater(remoteClientUI::showConnectedPanel);
+
     }
 
     @Override
