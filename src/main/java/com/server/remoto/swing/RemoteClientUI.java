@@ -37,6 +37,9 @@ public class RemoteClientUI {
         JLabel connectedLabel = new JLabel("¡Conexión exitosa!", SwingConstants.CENTER);
         connectedLabel.setFont(new Font("Arial", Font.BOLD, 18));
         connectedPanel.add(connectedLabel, BorderLayout.CENTER);
+
+
+
         mainPanel.add(connectedPanel, "connected");
 
         cardLayout.show(mainPanel, "waiting");
@@ -53,5 +56,9 @@ public class RemoteClientUI {
 
     public void showConnectedPanel() {
         cardLayout.show(mainPanel, "connected");
+    }
+
+    public void showWaitingPanel() {
+        cardLayout.show(mainPanel, "waiting");
     }
 }

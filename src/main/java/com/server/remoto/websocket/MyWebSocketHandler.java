@@ -72,6 +72,9 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session);
         System.out.println("Conexión cerrada: " + session.getId());
+
+        // Cambiar la UI en el hilo Swing para que muestre "Esperando conexión"
+        SwingUtilities.invokeLater(() -> remoteClientUI.showWaitingPanel());
     }
 
     private void broadcastScreen() {
