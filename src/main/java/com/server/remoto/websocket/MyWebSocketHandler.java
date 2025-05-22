@@ -35,6 +35,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     public MyWebSocketHandler(RemoteClientUI remoteClientUI) {
          this.remoteClientUI = remoteClientUI;
+
+        remoteClientUI.setOnDisconnectListener(this::closeAllConnections);
     }
 
     private synchronized void initializeRobotIfNeeded() {
@@ -138,7 +140,20 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // Método auxiliar para escapar caracteres especiales en JSON
+    private void closeAllConnections() {
+        for (WebSocketSession sess : sessions) {
+            try {
+                sess.close(CloseStatus.NORMAL);
+            } catch (Exception e) {
+                System.err.println("Error al cerrar sesión: " + sess.getId());
+            }
+        }
+        sessions.clear();
+
+        SwingUtilities.invokeLater(remoteClientUI::showWaitingPanel);
+    }
+
+    // Metodo auxiliar para escapar caracteres especiales en JSON
     private String escapeJson(String input) {
         return input
                 .replace("\\", "\\\\")
