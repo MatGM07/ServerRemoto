@@ -83,7 +83,20 @@
 			<artifactId>Java-WebSocket</artifactId>
 			<version>1.5.3</version>
 		</dependency>
-    </dependencies>
+
+		<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>javacv</artifactId>
+			<version>1.5.9</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>javacv-platform</artifactId>
+			<version>1.5.9</version>
+		</dependency>
+
+	</dependencies>
 
 	<build>
 		<plugins>

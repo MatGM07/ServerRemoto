@@ -1,6 +1,7 @@
 package com.server.remoto.websocket;
 
 import com.server.remoto.WindowTracker;
+import com.server.remoto.grabadora.GrabadoraPantalla;
 import com.server.remoto.swing.RemoteClientUI;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -25,17 +27,19 @@ import java.util.concurrent.TimeUnit;
 public class MyWebSocketHandler extends TextWebSocketHandler {
     private Robot robot;
     private Rectangle screenRect;
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2); // Aumentado a 2 threads
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
     private boolean initialized = false;
     private WindowTracker windowTracker;
+
+    private GrabadoraPantalla grabadoraPantalla;
+
     @Autowired
-    private final RemoteClientUI  remoteClientUI;
+    private final RemoteClientUI remoteClientUI;
 
     @Autowired
     public MyWebSocketHandler(RemoteClientUI remoteClientUI) {
-         this.remoteClientUI = remoteClientUI;
-
+        this.remoteClientUI = remoteClientUI;
         remoteClientUI.setOnDisconnectListener(this::closeAllConnections);
     }
 
@@ -46,11 +50,9 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
             this.screenRect = new Rectangle(d);
 
-            // Inicializar el WindowTracker pasando this como referencia
             this.windowTracker = new WindowTracker(this);
 
-            // Programar las tareas periódicas
-            scheduler.scheduleAtFixedRate(this::broadcastScreen, 0, 33, TimeUnit.MILLISECONDS);
+            scheduler.scheduleAtFixedRate(this::broadcastScreen, 0, 41, TimeUnit.MILLISECONDS); // 24 fps ~41ms
             scheduler.scheduleAtFixedRate(windowTracker::checkChanges, 0, 1, TimeUnit.SECONDS);
 
             initialized = true;
@@ -65,9 +67,26 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         initializeRobotIfNeeded();
         sessions.add(session);
 
-        // Cambiar el panel en el hilo de la interfaz gráfica
-        SwingUtilities.invokeLater(remoteClientUI::showConnectedPanel);
+        // Crear carpeta videos si no existe
+        File carpetaVideos = new File("videos");
+        if (!carpetaVideos.exists()) {
+            carpetaVideos.mkdirs();
+        }
 
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int width = screenSize.width;
+        int height = screenSize.height;
+
+        try {
+            grabadoraPantalla = new GrabadoraPantalla();
+            String ruta = "videos/rec_" + System.currentTimeMillis() + ".mp4";
+            grabadoraPantalla.start(ruta, width, height);
+            broadcastLog("Grabación iniciada: " + ruta);
+        } catch (Exception e) {
+            System.err.println("Error al iniciar grabación: " + e.getMessage());
+        }
+
+        SwingUtilities.invokeLater(remoteClientUI::showConnectedPanel);
     }
 
     @Override
@@ -75,8 +94,18 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         sessions.remove(session);
         System.out.println("Conexión cerrada: " + session.getId());
 
-        // Cambiar la UI en el hilo Swing para que muestre "Esperando conexión"
-        SwingUtilities.invokeLater(() -> remoteClientUI.showWaitingPanel());
+        if (grabadoraPantalla != null) {
+            try {
+                grabadoraPantalla.stop();
+                broadcastLog("Grabación finalizada. Archivo: " + grabadoraPantalla.getArchivoVideoPath());
+            } catch (Exception e) {
+                System.err.println("Error al detener grabación: " + e.getMessage());
+            } finally {
+                grabadoraPantalla = null;
+            }
+        }
+
+        SwingUtilities.invokeLater(remoteClientUI::showWaitingPanel);
     }
 
     private void broadcastScreen() {
@@ -85,20 +114,17 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         try {
             BufferedImage capture = robot.createScreenCapture(screenRect);
 
-            // Obtener la posición actual del mouse
+            // Dibuja cursor
             Point mouse = MouseInfo.getPointerInfo().getLocation();
-
-            // Dibujar el cursor sobre la imagen capturada
             Graphics2D g2d = capture.createGraphics();
-            g2d.setColor(Color.RED); // color visible
+            g2d.setColor(Color.RED);
             g2d.setStroke(new BasicStroke(2));
-
-            // Dibujar una cruz simple como cursor
             int size = 10;
             g2d.drawLine(mouse.x - size, mouse.y, mouse.x + size, mouse.y);
             g2d.drawLine(mouse.x, mouse.y - size, mouse.x, mouse.y + size);
             g2d.dispose();
 
+            // Enviar a clientes WebSocket
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             ImageIO.write(capture, "jpg", out);
             byte[] payload = out.toByteArray();
@@ -113,6 +139,16 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
                     }
                 }
             }
+
+            // Enviar frame a grabadora
+            if (grabadoraPantalla != null && grabadoraPantalla.isGrabando()) {
+                try {
+                    grabadoraPantalla.encodeFrame(capture);
+                } catch (Exception e) {
+                    System.err.println("Error grabando frame: " + e.getMessage());
+                }
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -120,7 +156,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
     public void broadcastLog(String logMessage) {
         try {
-            // Crear un objeto JSON para distinguir entre tipos de mensajes
             String jsonMessage = "{\"type\":\"log\",\"message\":\"" + escapeJson(logMessage) + "\"}";
             TextMessage textMsg = new TextMessage(jsonMessage);
 
@@ -133,7 +168,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
                     }
                 }
             }
-            // También lo imprimimos en la consola del servidor
             System.out.println(logMessage);
         } catch (Exception e) {
             e.printStackTrace();
@@ -149,11 +183,9 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             }
         }
         sessions.clear();
-
         SwingUtilities.invokeLater(remoteClientUI::showWaitingPanel);
     }
 
-    // Metodo auxiliar para escapar caracteres especiales en JSON
     private String escapeJson(String input) {
         return input
                 .replace("\\", "\\\\")
@@ -163,7 +195,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
                 .replace("\t", "\\t");
     }
 
-    // Para cerrar recursos cuando se detenga la aplicación
     public void shutdown() {
         scheduler.shutdownNow();
     }
