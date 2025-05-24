@@ -14,10 +14,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests((authz) -> authz
-                        .requestMatchers("/ws/**").permitAll() // permite WebSocket sin login
-                        .anyRequest().authenticated()          // el resto sí requiere login
+                        .requestMatchers("/ws/**", "/upload").permitAll() // ahora permite también /upload
+                        .anyRequest().authenticated()                     // el resto sigue requiriendo login
                 )
-                .csrf(csrf -> csrf.disable());// desactivá CSRF para permitir WebSocket
+                .csrf(csrf -> csrf.disable()); // CSRF desactivado para permitir POST sin token
 
         return http.build();
     }

@@ -1,0 +1,6 @@
+Como se registran las acciones
+que es pc registrado
+se puede web, todo?, solo server? o como?
+Informes?
+el servidor puede entrtar a varios a clientes a la vez?
+servidor entra a cliente o al reves?

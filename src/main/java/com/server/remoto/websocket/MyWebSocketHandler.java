@@ -77,6 +77,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         int width = screenSize.width;
         int height = screenSize.height;
 
+        /*
         try {
             grabadoraPantalla = new GrabadoraPantalla();
             String ruta = "videos/rec_" + System.currentTimeMillis() + ".mp4";
@@ -86,6 +87,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             System.err.println("Error al iniciar grabación: " + e.getMessage());
         }
 
+
+         */
         SwingUtilities.invokeLater(remoteClientUI::showConnectedPanel);
     }
 

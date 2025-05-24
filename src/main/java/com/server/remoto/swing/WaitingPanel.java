@@ -3,17 +3,14 @@ package com.server.remoto.swing;
 import javax.swing.*;
 import java.awt.*;
 
-public class WaitingPanel extends JPanel {
-    private final JLabel label;
-    public WaitingPanel() {
-        setLayout(new BorderLayout());
-        label = new JLabel("Iniciando aplicación, por favor espere…", SwingConstants.CENTER);
+public class WaitingPanel implements ViewPanel {
+    @Override
+    public JPanel getPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JLabel label = new JLabel("Esperando conexión...", SwingConstants.CENTER);
         label.setFont(new Font("Arial", Font.PLAIN, 18));
-        add(label, BorderLayout.CENTER);
-    }
-    /** Si quieres actualizar el mensaje: */
-    public void setMessage(String msg) {
-        SwingUtilities.invokeLater(() -> label.setText(msg));
+        panel.add(label, BorderLayout.CENTER);
+        return panel;
     }
 }
 

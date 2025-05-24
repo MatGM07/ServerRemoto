@@ -12,18 +12,26 @@ import java.awt.*;
 public class RemotoApplication {
 
 	public static void main(String[] args) {
-		// Antes de arrancar Spring, definimos que no está en modo headless
+		// Necesario para aplicaciones Swing
 		System.setProperty("java.awt.headless", "false");
 
-		// Arrancamos Spring y obtenemos el contexto
+		// Inicializa el contexto de Spring
 		ConfigurableApplicationContext context = SpringApplication.run(RemotoApplication.class, args);
 
-		// Luego pedimos el bean RemoteClientUI y ejecutamos la UI en el hilo Swing
+		// Obtiene el bean de UI
 		RemoteClientUI ui = context.getBean(RemoteClientUI.class);
 
+		// Define comportamiento al finalizar conexión
+		Runnable onDisconnect = () -> {
+			System.out.println("Conexión finalizada por el usuario.");
+			// Puedes hacer más cosas aquí: cerrar recursos, desconectar sockets, etc.
+			System.exit(0);
+		};
+
+		// Inicializa y muestra la interfaz en el hilo de Swing
 		SwingUtilities.invokeLater(() -> {
-			ui.initUI();    // Inicializa componentes gráficos
-			ui.showWindow(); // Muestra la ventana en pantalla
+			ui.initUI(onDisconnect);
+			ui.showWindow();
 		});
 	}
 }
