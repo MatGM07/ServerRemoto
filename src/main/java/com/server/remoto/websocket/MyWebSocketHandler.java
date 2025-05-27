@@ -40,7 +40,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     public MyWebSocketHandler(RemoteClientUI remoteClientUI) {
         this.remoteClientUI = remoteClientUI;
-        remoteClientUI.setOnDisconnectListener(this::closeAllConnections);
+        remoteClientUI.initUI(this::closeAllConnections); // Pasa aquí el callback
     }
 
     private synchronized void initializeRobotIfNeeded() {

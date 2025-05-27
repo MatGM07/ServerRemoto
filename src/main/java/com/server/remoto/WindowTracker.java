@@ -29,9 +29,6 @@ public class WindowTracker {
         if (logVisibleWindows()) cambios = true;
         if (logClosedProcesses()) cambios = true;
 
-        if (cambios) {
-            log("-------------------------------------------------");
-        }
     }
 
     private boolean logActiveWindow() {
