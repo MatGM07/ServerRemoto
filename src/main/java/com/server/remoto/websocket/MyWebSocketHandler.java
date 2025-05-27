@@ -40,7 +40,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     public MyWebSocketHandler(RemoteClientUI remoteClientUI) {
         this.remoteClientUI = remoteClientUI;
-        remoteClientUI.initUI(this::closeAllConnections); // Pasa aquí el callback
+        remoteClientUI.initUI(this::closeAllConnections);
     }
 
     private synchronized void initializeRobotIfNeeded() {
@@ -52,7 +52,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
             this.windowTracker = new WindowTracker(this);
 
-            scheduler.scheduleAtFixedRate(this::broadcastScreen, 0, 41, TimeUnit.MILLISECONDS); // 24 fps ~41ms
+            scheduler.scheduleAtFixedRate(this::broadcastScreen, 0, 41, TimeUnit.MILLISECONDS); // ~24 fps
             scheduler.scheduleAtFixedRate(windowTracker::checkChanges, 0, 1, TimeUnit.SECONDS);
 
             initialized = true;
@@ -67,7 +67,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         initializeRobotIfNeeded();
         sessions.add(session);
 
-        // Crear carpeta videos si no existe
         File carpetaVideos = new File("videos");
         if (!carpetaVideos.exists()) {
             carpetaVideos.mkdirs();
@@ -77,7 +76,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         int width = screenSize.width;
         int height = screenSize.height;
 
-        /*
         try {
             grabadoraPantalla = new GrabadoraPantalla();
             String ruta = "videos/rec_" + System.currentTimeMillis() + ".mp4";
@@ -87,8 +85,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             System.err.println("Error al iniciar grabación: " + e.getMessage());
         }
 
-
-         */
         SwingUtilities.invokeLater(remoteClientUI::showConnectedPanel);
     }
 
@@ -117,7 +113,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         try {
             BufferedImage capture = robot.createScreenCapture(screenRect);
 
-            // Dibuja cursor
+            // Dibujar cursor
             Point mouse = MouseInfo.getPointerInfo().getLocation();
             Graphics2D g2d = capture.createGraphics();
             g2d.setColor(Color.RED);
@@ -127,7 +123,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             g2d.drawLine(mouse.x, mouse.y - size, mouse.x, mouse.y + size);
             g2d.dispose();
 
-            // Enviar a clientes WebSocket
+            // Enviar imagen por WebSocket
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             ImageIO.write(capture, "jpg", out);
             byte[] payload = out.toByteArray();
@@ -143,10 +139,16 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
                 }
             }
 
-            // Enviar frame a grabadora
+            // CORREGIDO: Conversión de color para evitar filtro azul
+            BufferedImage formatted = new BufferedImage(capture.getWidth(), capture.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+            Graphics2D g = formatted.createGraphics();
+            g.drawImage(capture, 0, 0, null);
+            g.dispose();
+
+            // CORREGIDO: Enviar imagen ya convertida a la grabadora
             if (grabadoraPantalla != null && grabadoraPantalla.isGrabando()) {
                 try {
-                    grabadoraPantalla.encodeFrame(capture);
+                    grabadoraPantalla.encodeFrame(formatted);
                 } catch (Exception e) {
                     System.err.println("Error grabando frame: " + e.getMessage());
                 }
