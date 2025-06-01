@@ -139,13 +139,11 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
                 }
             }
 
-            // CORREGIDO: Conversión de color para evitar filtro azul
             BufferedImage formatted = new BufferedImage(capture.getWidth(), capture.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
             Graphics2D g = formatted.createGraphics();
             g.drawImage(capture, 0, 0, null);
             g.dispose();
 
-            // CORREGIDO: Enviar imagen ya convertida a la grabadora
             if (grabadoraPantalla != null && grabadoraPantalla.isGrabando()) {
                 try {
                     grabadoraPantalla.encodeFrame(formatted);
