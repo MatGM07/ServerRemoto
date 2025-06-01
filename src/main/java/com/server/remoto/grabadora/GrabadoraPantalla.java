@@ -5,6 +5,9 @@ import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.*;
 
 import java.awt.image.BufferedImage;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class GrabadoraPantalla {
     private FFmpegFrameRecorder recorder;
@@ -16,9 +19,12 @@ public class GrabadoraPantalla {
     // Variables para control de tiempo
     private long tiempoInicio;
     private long frameCount = 0;
-    private static final double TARGET_FPS = 15.0; // FPS objetivo más realista para captura de pantalla
+    private static final double TARGET_FPS = 15.0; //10 FPS
     private long lastFrameTime = 0;
-    private final long frameInterval = (long)(1000.0 / TARGET_FPS); // Intervalo entre frames en ms
+
+    // Executor para procesamiento en hilo separado
+    private ExecutorService encodingExecutor;
+    private volatile boolean encodingActive = true;
 
     public void start(String filePath, int width, int height) throws Exception {
         FFmpegLogCallback.set();
@@ -26,10 +32,21 @@ public class GrabadoraPantalla {
         recorder = new FFmpegFrameRecorder(filePath, width, height);
         recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
         recorder.setFormat("mp4");
-        recorder.setFrameRate(TARGET_FPS); // Usar FPS objetivo
+        recorder.setFrameRate(TARGET_FPS);
         recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
-        recorder.setVideoOption("preset", "ultrafast");
-        recorder.setVideoOption("crf", "28");
+
+        // Configuración de calidad
+        recorder.setVideoOption("preset", "medium"); // Mejor balance calidad/velocidad
+        recorder.setVideoOption("crf", "20"); // Mejor calidad (menor número = mejor calidad)
+        recorder.setVideoOption("profile", "high"); // Perfil H.264 alto
+        recorder.setVideoBitrate(2000000); // 2 Mbps para buena calidad
+
+        encodingExecutor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "VideoEncoder");
+            t.setDaemon(true);
+            return t;
+        });
+        encodingActive = true;
 
         recorder.start();
         grabando = true;
@@ -39,34 +56,58 @@ public class GrabadoraPantalla {
     }
 
     public void encodeFrame(BufferedImage img) throws Exception {
-        if (!grabando || recorder == null || img == null) return;
+        if (!grabando || recorder == null || img == null || !encodingActive) return;
 
-        long currentTime = System.currentTimeMillis();
+        BufferedImage imageCopy = new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
+        imageCopy.getGraphics().drawImage(img, 0, 0, null);
+        imageCopy.getGraphics().dispose();
 
-        // Control de velocidad: solo procesar frame si ha pasado suficiente tiempo
-        if (currentTime - lastFrameTime < frameInterval) {
-            return; // Saltar este frame para mantener el FPS objetivo
-        }
+        long captureTime = System.currentTimeMillis();
 
-        Frame rgbFrame = java2DConverter.convert(img);
+        encodingExecutor.submit(() -> {
+            try {
+                if (!grabando || recorder == null || !encodingActive) return;
 
-        // Establecer timestamp basado en el tiempo real transcurrido
-        long tiempoTranscurrido = currentTime - tiempoInicio;
-        double timestampSegundos = tiempoTranscurrido / 1000.0;
-        recorder.setTimestamp(Math.round(timestampSegundos * 1000000)); // Microsegundos
+                Frame rgbFrame = java2DConverter.convert(imageCopy);
 
-        recorder.record(rgbFrame);
-        frameCount++;
-        lastFrameTime = currentTime;
+                long tiempoTranscurrido = captureTime - tiempoInicio;
+                double timestampSegundos = tiempoTranscurrido / 1000.0;
+                recorder.setTimestamp(Math.round(timestampSegundos * 1000000));
+
+                synchronized (recorder) {
+                    recorder.record(rgbFrame);
+                    frameCount++;
+                }
+
+            } catch (Exception e) {
+                System.err.println("Error en encoding de frame: " + e.getMessage());
+            }
+        });
     }
 
     public void stop() throws Exception {
         if (grabando && recorder != null) {
-            recorder.stop();
-            recorder.release();
             grabando = false;
+            encodingActive = false;
 
-            // Información de debug
+            if (encodingExecutor != null) {
+                encodingExecutor.shutdown();
+                try {
+                    if (!encodingExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                        encodingExecutor.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    encodingExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            synchronized (recorder) {
+                recorder.stop();
+                recorder.release();
+            }
+
+            // Información de grabacion
             long tiempoTotal = System.currentTimeMillis() - tiempoInicio;
             double fpsReal = (frameCount * 1000.0) / tiempoTotal;
             System.out.println("Grabación finalizada:");
