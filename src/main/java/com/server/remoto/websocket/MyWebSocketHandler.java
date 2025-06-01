@@ -22,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
+import java.awt.RenderingHints;
 
 @Component
 public class MyWebSocketHandler extends TextWebSocketHandler {
@@ -81,6 +83,49 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             String ruta = "videos/rec_" + System.currentTimeMillis() + ".mp4";
             grabadoraPantalla.start(ruta, width, height);
             broadcastLog("Grabación iniciada: " + ruta);
+
+            // OPCIÓN B: Pre-capturar un frame inmediatamente después de iniciar
+            if (robot != null && screenRect != null) {
+                try {
+                    System.out.println("Capturando frame inicial para eliminar delay...");
+
+                    // Capturar pantalla inicial
+                    BufferedImage initialCapture = robot.createScreenCapture(screenRect);
+
+                    // Dibujar cursor en el frame inicial
+                    Point mouse = MouseInfo.getPointerInfo().getLocation();
+                    Graphics2D g2d = initialCapture.createGraphics();
+                    g2d.setColor(Color.RED);
+                    g2d.setStroke(new BasicStroke(2));
+                    int size = 10;
+                    g2d.drawLine(mouse.x - size, mouse.y, mouse.x + size, mouse.y);
+                    g2d.drawLine(mouse.x, mouse.y - size, mouse.x, mouse.y + size);
+                    g2d.dispose();
+
+                    // Convertir para grabación
+                    BufferedImage initialFrame = new BufferedImage(
+                            initialCapture.getWidth(),
+                            initialCapture.getHeight(),
+                            BufferedImage.TYPE_3BYTE_BGR
+                    );
+                    Graphics2D g = initialFrame.createGraphics();
+                    g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.drawImage(initialCapture, 0, 0, null);
+                    g.dispose();
+
+                    // Grabar el frame inicial
+                    grabadoraPantalla.encodeFrame(initialFrame);
+                    System.out.println("Frame inicial capturado y grabado exitosamente.");
+
+                } catch (Exception e) {
+                    System.err.println("Error capturando frame inicial: " + e.getMessage());
+                    // No es crítico, la grabación puede continuar normalmente
+                }
+            } else {
+                System.out.println("Robot o screenRect no disponibles para captura inicial.");
+            }
+
         } catch (Exception e) {
             System.err.println("Error al iniciar grabación: " + e.getMessage());
         }
@@ -106,14 +151,11 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
         SwingUtilities.invokeLater(remoteClientUI::showWaitingPanel);
     }
-
     private void broadcastScreen() {
         if (robot == null || screenRect == null) return;
 
         try {
             BufferedImage capture = robot.createScreenCapture(screenRect);
-
-            // Dibujar cursor
             Point mouse = MouseInfo.getPointerInfo().getLocation();
             Graphics2D g2d = capture.createGraphics();
             g2d.setColor(Color.RED);
@@ -123,34 +165,44 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
             g2d.drawLine(mouse.x, mouse.y - size, mouse.x, mouse.y + size);
             g2d.dispose();
 
-            // Enviar imagen por WebSocket
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ImageIO.write(capture, "jpg", out);
-            byte[] payload = out.toByteArray();
-            BinaryMessage msg = new BinaryMessage(payload);
-
-            for (WebSocketSession sess : sessions) {
-                if (sess.isOpen()) {
-                    try {
-                        sess.sendMessage(msg);
-                    } catch (Exception e) {
-                        System.err.println("Error enviando imagen a sesión " + sess.getId() + ": " + e.getMessage());
-                    }
-                }
-            }
-
-            BufferedImage formatted = new BufferedImage(capture.getWidth(), capture.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-            Graphics2D g = formatted.createGraphics();
-            g.drawImage(capture, 0, 0, null);
-            g.dispose();
-
+            // Grabar frame antes de enviarlo por WebSocket
             if (grabadoraPantalla != null && grabadoraPantalla.isGrabando()) {
                 try {
-                    grabadoraPantalla.encodeFrame(formatted);
+                    // Convertir directamente sin crear una nueva imagen
+                    BufferedImage videoFrame = new BufferedImage(capture.getWidth(), capture.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+                    Graphics2D g = videoFrame.createGraphics();
+                    g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.drawImage(capture, 0, 0, null);
+                    g.dispose();
+
+                    grabadoraPantalla.encodeFrame(videoFrame);
                 } catch (Exception e) {
                     System.err.println("Error grabando frame: " + e.getMessage());
                 }
             }
+
+            //Enviar por WebSocket (en paralelo si es posible)
+            CompletableFuture.runAsync(() -> {
+                try {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    ImageIO.write(capture, "jpg", out);
+                    byte[] payload = out.toByteArray();
+                    BinaryMessage msg = new BinaryMessage(payload);
+
+                    for (WebSocketSession sess : sessions) {
+                        if (sess.isOpen()) {
+                            try {
+                                sess.sendMessage(msg);
+                            } catch (Exception e) {
+                                System.err.println("Error enviando imagen a sesión " + sess.getId() + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error procesando WebSocket: " + e.getMessage());
+                }
+            });
 
         } catch (Exception e) {
             e.printStackTrace();
