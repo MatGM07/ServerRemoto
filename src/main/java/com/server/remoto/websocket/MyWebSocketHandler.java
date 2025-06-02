@@ -13,6 +13,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -110,6 +111,44 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
         SwingUtilities.invokeLater(remoteClientUI::showConnectedPanel);
     }
+
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        String payload = message.getPayload();
+
+        try {
+            JSONObject json = new JSONObject(payload);
+            String comando = json.getString("comando");
+
+            if (comando.equals("enviar_video")) {
+                if (grabadoraPantalla != null) {
+                    try {
+                        grabadoraPantalla.stop(); // Detiene la grabación
+                        String path = grabadoraPantalla.getArchivoVideoPath();
+
+                        File video = new File(path);
+                        if (video.exists()) {
+                            videoSenderController.enviarArchivo(video, clienteHost.get(session), clientePort.get(session));
+                            System.out.println("[WS] Video enviado por orden del servidor.");
+                        } else {
+                            System.err.println("Archivo de video no encontrado.");
+                        }
+
+                    } catch (Exception e) {
+                        System.err.println("Error enviando video: " + e.getMessage());
+                    } finally {
+                        grabadoraPantalla = null;
+                    }
+                }
+            }
+            // Aquí puedes manejar otros comandos si los necesitas más adelante
+
+        } catch (Exception e) {
+            System.err.println("Error procesando mensaje: " + e.getMessage());
+        }
+    }
+
+
 
     public void obtenerDatosDelHost(InetSocketAddress remoteAddr, WebSocketSession session){
         String hostRemoto = remoteAddr.getAddress().getHostAddress();
