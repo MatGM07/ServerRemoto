@@ -32,7 +32,7 @@ public class VideoSenderController {
             throw new IllegalStateException("Host o puerto no definidos.");
         }
 
-        String targetUrl = "http://" + host + ":" + port + "/upload";
+        String targetUrl = "http://" + host + ":" + "8080" + "/upload";
         HttpPost post = new HttpPost(targetUrl);
 
         HttpEntity entity = MultipartEntityBuilder.create()
