@@ -281,7 +281,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void closeAllConnections() {
+    public void closeAllConnections() {
         for (WebSocketSession sess : sessions) {
             try {
                 sess.close(CloseStatus.NORMAL);
