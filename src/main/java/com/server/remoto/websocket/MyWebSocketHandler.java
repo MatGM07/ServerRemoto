@@ -1,6 +1,7 @@
 package com.server.remoto.websocket;
 
 import com.server.remoto.WindowTracker;
+import com.server.remoto.grabadora.ClickListener;
 import com.server.remoto.grabadora.GrabadoraPantalla;
 import com.server.remoto.swing.RemoteClientUI;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +34,10 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
     private boolean initialized = false;
     private WindowTracker windowTracker;
+    private final ClickListener clickListener = new ClickListener();
 
-    private GrabadoraPantalla grabadoraPantalla;
+
+private GrabadoraPantalla grabadoraPantalla;
 
     @Autowired
     private final RemoteClientUI remoteClientUI;
@@ -68,6 +71,10 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         System.out.println("Nueva conexión establecida: " + session.getId());
         initializeRobotIfNeeded();
         sessions.add(session);
+
+        if (sessions.size() == 1) {
+            clickListener.startListening(this::broadcastLog);
+        }
 
         File carpetaVideos = new File("videos");
         if (!carpetaVideos.exists()) {
@@ -137,6 +144,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session);
         System.out.println("Conexión cerrada: " + session.getId());
+
+        clickListener.stopListening();
 
         if (grabadoraPantalla != null) {
             try {
