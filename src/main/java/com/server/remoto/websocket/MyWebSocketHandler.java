@@ -5,6 +5,7 @@ import com.server.remoto.WindowTracker;
 import com.server.remoto.controller.VideoSenderController;
 import com.server.remoto.grabadora.GrabadoraPantalla;
 import com.server.remoto.swing.RemoteClientUI;
+import com.server.remoto.grabadora.MouseClickLogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
@@ -38,8 +39,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     private boolean initialized = false;
     private WindowTracker windowTracker;
     private final Map<WebSocketSession, Object> sessionLocks = new ConcurrentHashMap<>();
-
     private GrabadoraPantalla grabadoraPantalla;
+    private final MouseClickLogger mouseClickLogger = new MouseClickLogger();
 
     @Autowired
     private final RemoteClientUI remoteClientUI;
@@ -89,6 +90,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
         System.out.println("Nueva conexión establecida: " + session.getId());
         initializeRobotIfNeeded();
+
+        mouseClickLogger.startListening(this::broadcastLog);
 
 
         File carpetaVideos = new File("videos");
@@ -160,6 +163,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         sessions.remove(session);
         sessionLocks.remove(session);
         System.out.println("Conexión cerrada: " + session.getId());
+
+        mouseClickLogger.stopListening();
 
         if (grabadoraPantalla != null) {
             try {

@@ -36,10 +36,10 @@ public class GrabadoraPantalla {
         recorder.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
 
         // Configuración de calidad
-        recorder.setVideoOption("preset", "ultrafast"); // Mejor balance calidad/velocidad
+        recorder.setVideoOption("preset", "medium"); // Mejor balance calidad/velocidad
         recorder.setVideoOption("crf", "20"); // Mejor calidad (menor número = mejor calidad)
         recorder.setVideoOption("profile", "high"); // Perfil H.264 alto
-        recorder.setVideoBitrate(500000); // 2 Mbps para buena calidad
+        recorder.setVideoBitrate(2000000); // 2 Mbps para buena calidad
 
         encodingExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "VideoEncoder");
