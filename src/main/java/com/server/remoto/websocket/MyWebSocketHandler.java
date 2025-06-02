@@ -1,6 +1,7 @@
 package com.server.remoto.websocket;
 
 import com.server.remoto.WindowTracker;
+import com.server.remoto.controller.VideoSenderController;
 import com.server.remoto.grabadora.GrabadoraPantalla;
 import com.server.remoto.swing.RemoteClientUI;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -33,11 +36,18 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
     private boolean initialized = false;
     private WindowTracker windowTracker;
+    private final Map<WebSocketSession, Object> sessionLocks = new ConcurrentHashMap<>();
 
     private GrabadoraPantalla grabadoraPantalla;
 
     @Autowired
     private final RemoteClientUI remoteClientUI;
+
+    @Autowired
+    private VideoSenderController videoSenderController;
+
+    private final Map<WebSocketSession, String> clienteHost = new ConcurrentHashMap<>();
+    private final Map<WebSocketSession, Integer> clientePort = new ConcurrentHashMap<>();
 
     @Autowired
     public MyWebSocketHandler(RemoteClientUI remoteClientUI) {
@@ -65,9 +75,20 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        sessions.add(session);
+        InetSocketAddress remoteAddr = session.getRemoteAddress();
+
+        if (remoteAddr != null) {
+            String hostRemoto = remoteAddr.getAddress().getHostAddress();
+            int puertoRemoto = remoteAddr.getPort();
+            clienteHost.put(session, hostRemoto);
+            clientePort.put(session, puertoRemoto);
+            System.out.println("[WS] Nueva conexión de " + hostRemoto + ":" + puertoRemoto);
+        }
+
         System.out.println("Nueva conexión establecida: " + session.getId());
         initializeRobotIfNeeded();
-        sessions.add(session);
+
 
         File carpetaVideos = new File("videos");
         if (!carpetaVideos.exists()) {
@@ -136,18 +157,40 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session);
+        sessionLocks.remove(session);
         System.out.println("Conexión cerrada: " + session.getId());
 
         if (grabadoraPantalla != null) {
             try {
                 grabadoraPantalla.stop();
+                String pathVideo = grabadoraPantalla.getArchivoVideoPath();
                 broadcastLog("Grabación finalizada. Archivo: " + grabadoraPantalla.getArchivoVideoPath());
+
+                String hostDestino = clienteHost.get(session);
+                Integer portDestino = clientePort.get(session);
+
+                File videoFile = new File(pathVideo);
+                if (videoFile.exists() && hostDestino != null && portDestino != null) {
+                    try {
+                        videoSenderController.enviarArchivo(videoFile, hostDestino, portDestino);
+                        System.out.println("[WS] Video enviado a " +
+                                hostDestino + ":" + portDestino);
+                    } catch (Exception ex) {
+                        System.err.println("[WS] Error enviando video: " + ex.getMessage());
+                    }
+                } else {
+                    System.err.println("[WS] No existe el archivo o no tengo host/puerto.");
+                }
+
             } catch (Exception e) {
                 System.err.println("Error al detener grabación: " + e.getMessage());
             } finally {
                 grabadoraPantalla = null;
             }
         }
+
+        clienteHost.remove(session);
+        clientePort.remove(session);
 
         SwingUtilities.invokeLater(remoteClientUI::showWaitingPanel);
     }
@@ -192,10 +235,13 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
                     for (WebSocketSession sess : sessions) {
                         if (sess.isOpen()) {
-                            try {
-                                sess.sendMessage(msg);
-                            } catch (Exception e) {
-                                System.err.println("Error enviando imagen a sesión " + sess.getId() + ": " + e.getMessage());
+                            sessionLocks.putIfAbsent(sess, new Object());
+                            synchronized (sessionLocks.get(sess)) {
+                                try {
+                                    sess.sendMessage(msg);
+                                } catch (Exception e) {
+                                    System.err.println("Error enviando imagen a sesión " + sess.getId() + ": " + e.getMessage());
+                                }
                             }
                         }
                     }
