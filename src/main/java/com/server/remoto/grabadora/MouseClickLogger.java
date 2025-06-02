@@ -4,11 +4,13 @@ import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent;
 import com.github.kwhat.jnativehook.mouse.NativeMouseListener;
+import org.springframework.stereotype.Component;
 
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@Component
 public class MouseClickLogger {
     private NativeMouseListener mouseClickListener;
     private boolean mouseListenerActive = false;

@@ -3,12 +3,14 @@ package com.server.remoto.grabadora;
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.*;
+import org.springframework.stereotype.Component;
 
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+@Component
 public class GrabadoraPantalla {
     private FFmpegFrameRecorder recorder;
     private volatile boolean grabando = false;
@@ -62,28 +64,30 @@ public class GrabadoraPantalla {
         imageCopy.getGraphics().drawImage(img, 0, 0, null);
         imageCopy.getGraphics().dispose();
 
-        long captureTime = System.currentTimeMillis();
-
-        encodingExecutor.submit(() -> {
-            try {
-                if (!grabando || recorder == null || !encodingActive) return;
-
-                Frame rgbFrame = java2DConverter.convert(imageCopy);
-
-                long tiempoTranscurrido = captureTime - tiempoInicio;
-                double timestampSegundos = tiempoTranscurrido / 1000.0;
-                recorder.setTimestamp(Math.round(timestampSegundos * 1000000));
-
-                synchronized (recorder) {
-                    recorder.record(rgbFrame);
-                    frameCount++;
-                }
-
-            } catch (Exception e) {
-                System.err.println("Error en encoding de frame: " + e.getMessage());
-            }
-        });
+        encodingExecutor.submit(() -> procesarFrame(imageCopy));
     }
+
+    private void procesarFrame(BufferedImage imageCopy) {
+        try {
+            if (!grabando || recorder == null || !encodingActive) return;
+
+            Frame rgbFrame = java2DConverter.convert(imageCopy);
+
+            long timePerFrameMicros = (long)(1_000_000 / TARGET_FPS);
+            long timestamp = frameCount * timePerFrameMicros;
+
+            synchronized (recorder) {
+                recorder.setTimestamp(timestamp);
+                recorder.record(rgbFrame);
+                frameCount++;
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error en encoding de frame: " + e.getMessage());
+        }
+    }
+
+
 
     public void stop() throws Exception {
         if (grabando && recorder != null) {
@@ -101,20 +105,22 @@ public class GrabadoraPantalla {
                     Thread.currentThread().interrupt();
                 }
             }
-
             synchronized (recorder) {
                 recorder.stop();
                 recorder.release();
             }
 
-            // Información de grabacion
-            long tiempoTotal = System.currentTimeMillis() - tiempoInicio;
-            double fpsReal = (frameCount * 1000.0) / tiempoTotal;
-            System.out.println("Grabación finalizada:");
-            System.out.println("- Frames grabados: " + frameCount);
-            System.out.println("- Tiempo total: " + (tiempoTotal / 1000.0) + " segundos");
-            System.out.println("- FPS real: " + String.format("%.2f", fpsReal));
+            imprimirInfoVideo();
         }
+    }
+
+    private void imprimirInfoVideo() {
+        long tiempoTotal = System.currentTimeMillis() - tiempoInicio;
+        double fpsReal = (frameCount * 1000.0) / tiempoTotal;
+        System.out.println("Grabación finalizada:");
+        System.out.println("- Frames grabados: " + frameCount);
+        System.out.println("- Tiempo total: " + (tiempoTotal / 1000.0) + " segundos");
+        System.out.println("- FPS real: " + String.format("%.2f", fpsReal));
     }
 
     public boolean isGrabando() {
