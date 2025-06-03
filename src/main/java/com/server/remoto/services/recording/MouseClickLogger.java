@@ -17,13 +17,21 @@ public class MouseClickLogger {
 
     public void startListening(Consumer<String> logConsumer) {
         try {
+            // Siempre intentar desregistrar antes de registrar de nuevo.
+            if (GlobalScreen.isNativeHookRegistered()) {
+                try {
+                    GlobalScreen.unregisterNativeHook();
+                    System.out.println("Hook anterior desregistrado antes de iniciar uno nuevo.");
+                } catch (NativeHookException e) {
+                    System.err.println("Error al intentar limpiar hook existente: " + e.getMessage());
+                }
+            }
+
             Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
             logger.setLevel(Level.OFF);
             logger.setUseParentHandlers(false);
 
-            if (!GlobalScreen.isNativeHookRegistered()) {
-                GlobalScreen.registerNativeHook();
-            }
+            GlobalScreen.registerNativeHook();  // Registro limpio
 
             mouseClickListener = new NativeMouseListener() {
                 @Override
@@ -33,11 +41,8 @@ public class MouseClickLogger {
                     logConsumer.accept(log);
                 }
 
-                @Override
-                public void nativeMouseReleased(NativeMouseEvent e) {}
-
-                @Override
-                public void nativeMouseClicked(NativeMouseEvent e) {}
+                @Override public void nativeMouseReleased(NativeMouseEvent e) {}
+                @Override public void nativeMouseClicked(NativeMouseEvent e) {}
             };
 
             GlobalScreen.addNativeMouseListener(mouseClickListener);
@@ -57,19 +62,30 @@ public class MouseClickLogger {
                 System.out.println("Listener de clics del mouse detenido.");
             }
 
+            // Dar tiempo a que los eventos pendientes se procesen
+            Thread.sleep(100); // Ajustar si es necesario
+
             if (GlobalScreen.isNativeHookRegistered()) {
                 GlobalScreen.unregisterNativeHook();
+                System.out.println("Native hook desregistrado.");
             }
+
+            // Solo después de desregistrar, eliminamos el dispatcher (opcional)
+            GlobalScreen.setEventDispatcher(null);
+
         } catch (NativeHookException e) {
             System.err.println("Error deteniendo listener de mouse: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // Restaurar estado de interrupción
+        } catch (Exception e) {
+            System.err.println("Error deteniendo mouse logger: " + e.getMessage());
         }
     }
-
     private String getMouseButtonName(int button) {
         return switch (button) {
             case NativeMouseEvent.BUTTON1 -> "izquierdo";
-            case NativeMouseEvent.BUTTON2 -> "medio/rueda";
-            case NativeMouseEvent.BUTTON3 -> "derecho";
+            case NativeMouseEvent.BUTTON2 -> "derecho";
+            case NativeMouseEvent.BUTTON3 -> "rueda";
             case NativeMouseEvent.BUTTON4 -> "lateral 1";
             case NativeMouseEvent.BUTTON5 -> "lateral 2";
             default -> "botón " + button;

@@ -17,6 +17,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class MyWebSocketHandler extends TextWebSocketHandler {
@@ -27,7 +28,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     private final WindowTracker windowTracker;
     private final MessageCommandService messageCommandService;
     private final SessionService sessionService;
-
+    private final AtomicInteger activeConnections = new AtomicInteger(0);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private ScheduledFuture<?> windowTrackerTask;
     private boolean initialized = false;
@@ -64,6 +65,10 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         System.out.println("Nueva conexión establecida: " + session.getId());
         initializeServices();
 
+        if (activeConnections.incrementAndGet() == 1) {
+            startWindowTracker();
+        }
+        
         sessionService.iniciarMouseLogger();
         grabadoraPantalla = sessionService.iniciarGrabacion();
         sessionService.mostrarUIConectado();
@@ -74,13 +79,21 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         connectionManager.unregisterSession(session);
         System.out.println("Conexión cerrada: " + session.getId());
 
-        sessionService.detenerMouseLogger();
+        try {
+            sessionService.detenerMouseLogger();
+        } catch (Exception e) {
+            System.err.println("Error deteniendo mouse logger: " + e.getMessage());
+        }
         sessionService.detenerGrabacionYEnviar(grabadoraPantalla, session, connectionManager);
         grabadoraPantalla = null;
 
         if (windowTrackerTask != null && !windowTrackerTask.isCancelled()) {
             windowTrackerTask.cancel(true);
             System.out.println("Tarea de rastreo de ventanas detenida.");
+        }
+
+        if (activeConnections.decrementAndGet() == 0) {
+            stopWindowTracker();
         }
 
         sessionService.mostrarUIEsperando();
@@ -101,12 +114,19 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         screenCaptureService.initialize();
         scheduler.scheduleAtFixedRate(() -> screenBroadcastService.broadcastScreen(grabadoraPantalla), 0, 41, TimeUnit.MILLISECONDS);
 
-        windowTrackerTask = scheduler.scheduleAtFixedRate(
-                windowTracker::checkChanges,
-                0, 1, TimeUnit.SECONDS
-        );
-
         initialized = true;
+    }
+
+    private void startWindowTracker() {
+        windowTrackerTask = scheduler.scheduleAtFixedRate(windowTracker::checkChanges, 0, 1, TimeUnit.SECONDS);
+        System.out.println("Tarea de rastreo de ventanas iniciada.");
+    }
+
+    private void stopWindowTracker() {
+        if (windowTrackerTask != null && !windowTrackerTask.isCancelled()) {
+            windowTrackerTask.cancel(true);
+            System.out.println("Tarea de rastreo de ventanas detenida.");
+        }
     }
 
     public void closeAllConnections() {
