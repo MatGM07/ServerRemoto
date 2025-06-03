@@ -1,25 +1,28 @@
-package com.server.remoto;
+package com.server.remoto.services.logger;
 
-import com.server.remoto.websocket.MyWebSocketHandler;
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.HWND;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.*;
 
+@Service
 public class WindowTracker {
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private Set<String> previousVisibleWindows = new HashSet<>();
     private Set<String> previousProcesses = new HashSet<>();
     private String lastActiveWindow = "";
-    private final MyWebSocketHandler webSocketHandler;
 
-    public WindowTracker(MyWebSocketHandler webSocketHandler) {
-        this.webSocketHandler = webSocketHandler;
+    private LogBroadcastService logBroadcastService;
+
+    @Autowired
+    public WindowTracker(LogBroadcastService logBroadcastService) {
+        this.logBroadcastService = logBroadcastService;
     }
 
     public void checkChanges() {
@@ -111,11 +114,9 @@ public class WindowTracker {
         return huboCambios;
     }
 
-    private void log(String message) {
-        // Formato con timestamp
-        String formattedMessage = "[" + dateFormat.format(new Date()) + "] " + message;
 
-        // Enviar al websocket en lugar de imprimir directamente
-        webSocketHandler.broadcastLog(formattedMessage);
+    private void log(String message) {
+        String formattedMessage = "[" + dateFormat.format(new Date()) + "] " + message;
+        logBroadcastService.broadcastLog(formattedMessage);
     }
 }

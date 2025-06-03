@@ -1,7 +1,7 @@
 package com.server.remoto.controller;
 
 import com.server.remoto.swing.RemoteClientUI;
-import com.server.remoto.services.FileStorageService;
+import com.server.remoto.services.receptor.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -14,10 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import javax.swing.*;
-import java.io.File;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 
 @RestController

@@ -1,4 +1,4 @@
-package com.server.remoto.grabadora;
+package com.server.remoto.services.grabadora;
 
 import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
