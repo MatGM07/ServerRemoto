@@ -69,7 +69,7 @@ public class MessageCommandService {
             Integer port = connectionManager.getClientPort(session);
 
             if (host != null && port != null) {
-                videoSenderController.enviarArchivo(video, host, port);
+                videoSenderController.enviarArchivo(video, host);
                 logBroadcastService.broadcastLog("[CommandHandler] Video enviado por orden del servidor.");
                 return true;  // Aquí indicamos que grabadoraPantalla puede ser limpiada
             } else {

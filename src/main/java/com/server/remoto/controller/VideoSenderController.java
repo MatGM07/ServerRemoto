@@ -16,19 +16,11 @@ public class VideoSenderController {
 
     public VideoSenderController() { }
 
-    /**
-     * Envía un archivo (multipart/form-data) al endpoint /upload del servidor remoto.
-     *
-     * @param file El archivo a enviar.
-     * @param host Dirección IP o nombre de host del servidor destino.
-     * @param port Puerto HTTP donde escucha el servidor destino.
-     * @throws Exception si hay error, archivo inexistente o configuración incorrecta.
-     */
-    public void enviarArchivo(File file, String host, Integer port) throws Exception {
+    public void enviarArchivo(File file, String host) throws Exception {
         if (file == null || !file.exists()) {
             throw new IllegalArgumentException("El archivo no existe o es null.");
         }
-        if (host == null || port == null) {
+        if (host == null ) {
             throw new IllegalStateException("Host o puerto no definidos.");
         }
 

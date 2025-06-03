@@ -22,6 +22,7 @@ public class SessionService {
     private final RemoteClientUI remoteClientUI;
     private final MouseClickLogger mouseClickLogger;
 
+
     @Autowired
     public SessionService(LogBroadcastService logBroadcastService,
                                    VideoSenderController videoSenderController,
@@ -63,9 +64,11 @@ public class SessionService {
 
             String hostDestino = connectionManager.getClientHost(session);
             Integer portDestino = connectionManager.getClientPort(session);
+            System.out.println("Host destino: " + hostDestino);
+            System.out.println("Puerto destino: " + portDestino);
             File videoFile = new File(pathVideo);
             if (videoFile.exists() && hostDestino != null && portDestino != null) {
-                videoSenderController.enviarArchivo(videoFile, hostDestino, portDestino);
+                videoSenderController.enviarArchivo(videoFile, hostDestino);
                 System.out.println("[WS] Video enviado a " + hostDestino + ":" + portDestino);
             } else {
                 System.err.println("[WS] No se pudo enviar el video: archivo o datos incompletos.");

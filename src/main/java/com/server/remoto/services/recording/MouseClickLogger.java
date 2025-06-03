@@ -31,7 +31,7 @@ public class MouseClickLogger {
             logger.setLevel(Level.OFF);
             logger.setUseParentHandlers(false);
 
-            GlobalScreen.registerNativeHook();  // Registro limpio
+            GlobalScreen.registerNativeHook();
 
             mouseClickListener = new NativeMouseListener() {
                 @Override

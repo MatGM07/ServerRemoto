@@ -68,7 +68,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         if (activeConnections.incrementAndGet() == 1) {
             startWindowTracker();
         }
-        
+
         sessionService.iniciarMouseLogger();
         grabadoraPantalla = sessionService.iniciarGrabacion();
         sessionService.mostrarUIConectado();
@@ -76,7 +76,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        connectionManager.unregisterSession(session);
         System.out.println("Conexión cerrada: " + session.getId());
 
         try {
@@ -87,10 +86,8 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         sessionService.detenerGrabacionYEnviar(grabadoraPantalla, session, connectionManager);
         grabadoraPantalla = null;
 
-        if (windowTrackerTask != null && !windowTrackerTask.isCancelled()) {
-            windowTrackerTask.cancel(true);
-            System.out.println("Tarea de rastreo de ventanas detenida.");
-        }
+        connectionManager.unregisterSession(session);
+
 
         if (activeConnections.decrementAndGet() == 0) {
             stopWindowTracker();

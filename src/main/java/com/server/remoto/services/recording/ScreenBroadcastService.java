@@ -1,6 +1,7 @@
 package com.server.remoto.services.recording;
 
 import com.server.remoto.websocket.WebSocketConnectionManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -13,6 +14,9 @@ import java.util.concurrent.CompletableFuture;
 
 @Service
 public class ScreenBroadcastService {
+
+    @Autowired
+    private ByteArrayOutputStreamPool baosPool;
 
     private final ScreenCaptureService screenCaptureService;
     private final WebSocketConnectionManager connectionManager;
@@ -55,8 +59,8 @@ public class ScreenBroadcastService {
 
     private void sendImageToClients(BufferedImage image) {
         CompletableFuture.runAsync(() -> {
+            ByteArrayOutputStream out = baosPool.borrow();
             try {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
                 ImageIO.write(image, "jpg", out);
                 byte[] payload = out.toByteArray();
 
@@ -73,6 +77,8 @@ public class ScreenBroadcastService {
                 }
             } catch (Exception e) {
                 System.err.println("Error procesando WebSocket: " + e.getMessage());
+            }   finally {
+                baosPool.release(out);
             }
         });
     }

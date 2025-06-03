@@ -19,12 +19,12 @@ public class GrabadoraPantalla {
     private final OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
     private final Java2DFrameConverter java2DConverter = new Java2DFrameConverter();
 
-    // Variables para control de tiempo
+
     private long tiempoInicio;
     private long frameCount = 0;
-    private static final double TARGET_FPS = 10.0; // FPS más realista
+    private static final double TARGET_FPS = 10.0;
     private long lastFrameTime = 0;
-    private final long FRAME_INTERVAL_MS = (long)(1000.0 / TARGET_FPS); // Intervalo entre frames
+    private final long FRAME_INTERVAL_MS = (long)(1000.0 / TARGET_FPS);
 
     // Executor para procesamiento en hilo separado
     private ExecutorService encodingExecutor;
