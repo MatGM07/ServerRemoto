@@ -1,6 +1,6 @@
 package com.server.remoto.controller;
 
-import com.server.remoto.swing.RemoteClientUI;
+import com.server.remoto.ui.RemoteClientUI;
 import com.server.remoto.services.receptor.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

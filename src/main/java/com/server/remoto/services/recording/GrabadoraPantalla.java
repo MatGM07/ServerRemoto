@@ -1,4 +1,4 @@
-package com.server.remoto.services.grabadora;
+package com.server.remoto.services.recording;
 
 import org.bytedeco.ffmpeg.global.avcodec;
 import org.bytedeco.ffmpeg.global.avutil;

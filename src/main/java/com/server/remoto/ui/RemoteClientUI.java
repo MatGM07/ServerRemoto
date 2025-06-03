@@ -1,4 +1,4 @@
-package com.server.remoto.swing;
+package com.server.remoto.ui;
 
 import org.springframework.stereotype.Component;
 

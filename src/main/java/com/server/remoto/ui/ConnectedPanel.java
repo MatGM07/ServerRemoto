@@ -1,4 +1,4 @@
-package com.server.remoto.swing;
+package com.server.remoto.ui;
 
 import javax.swing.*;
 import java.awt.*;

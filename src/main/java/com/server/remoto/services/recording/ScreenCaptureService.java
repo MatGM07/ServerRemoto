@@ -1,4 +1,4 @@
-package com.server.remoto.services.grabadora;
+package com.server.remoto.services.recording;
 
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package com.server.remoto.swing;
+package com.server.remoto.ui;
 
 public class PanelFactory {
     private final Runnable onDisconnect;

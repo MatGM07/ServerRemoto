@@ -3,11 +3,10 @@ package com.server.remoto;
 import com.server.remoto.websocket.MyWebSocketHandler;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import com.server.remoto.swing.RemoteClientUI;
+import com.server.remoto.ui.RemoteClientUI;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import javax.swing.*;
-import java.awt.*;
 
 @SpringBootApplication
 public class RemotoApplication {
